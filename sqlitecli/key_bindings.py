@@ -7,9 +7,9 @@ from .filters import HasSelectedCompletion
 _logger = logging.getLogger(__name__)
 
 
-def mycli_bindings():
+def cli_bindings():
     """
-    Custom key bindings for mycli.
+    Custom key bindings for cli.
     """
     key_binding_manager = KeyBindingManager(
         enable_open_in_editor=True,

@@ -10,11 +10,11 @@ from time import sleep
 import click
 import sqlparse
 
+from sqlitecli.packages.prompt_utils import confirm_destructive_query
 from . import export
 from .main import special_command, NO_QUERY, PARSED_QUERY
 from .favoritequeries import favoritequeries
 from .utils import handle_cd_command
-from mycli.packages.prompt_utils import confirm_destructive_query
 
 TIMING_ENABLED = False
 use_expanded_output = False

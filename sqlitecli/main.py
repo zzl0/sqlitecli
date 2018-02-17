@@ -31,7 +31,7 @@ from pygments.token import Token
 from .packages.special.main import NO_QUERY
 from .packages.prompt_utils import confirm, confirm_destructive_query, prompt
 from .packages.tabular_output import sql_format
-import mycli.packages.special as special
+import packages.special as special
 from .sqlcompleter import SQLCompleter
 from .clitoolbar import create_toolbar_tokens_func
 from .clistyle import style_factory
@@ -40,12 +40,12 @@ from .clibuffer import CLIBuffer
 from .completion_refresher import CompletionRefresher
 from .config import (write_default_config, get_mylogin_cnf_path,
                      open_mylogin_cnf, read_config_files, str_to_bool)
-from .key_bindings import mycli_bindings
+from .key_bindings import cli_bindings
 from .encodingutils import utf8tounicode, text_type
-from .lexer import MyCliLexer
+from .lexer import Lexer
 from .__init__ import __version__
-from mycli.compat import WIN
-from mycli.packages.filepaths import dir_path_exists
+from .compat import WIN
+from .packages.filepaths import dir_path_exists
 
 import itertools
 
@@ -66,7 +66,7 @@ Query = namedtuple('Query', ['query', 'successful', 'mutating'])
 PACKAGE_ROOT = os.path.abspath(os.path.dirname(__file__))
 
 
-class MyCli(object):
+class SQLiteCli(object):
 
     default_prompt = '\\t \\u@\\h:\\d> '
     max_len_prompt = 45
@@ -74,23 +74,19 @@ class MyCli(object):
 
     # In order of being loaded. Files lower in list override earlier ones.
     cnf_files = [
-        '/etc/my.cnf',
-        '/etc/mysql/my.cnf',
-        '/usr/local/etc/my.cnf',
-        '~/.my.cnf'
     ]
 
     system_config_files = [
-        '/etc/myclirc',
+        '/etc/sqliteclirc',
     ]
 
-    default_config_file = os.path.join(PACKAGE_ROOT, 'myclirc')
+    default_config_file = os.path.join(PACKAGE_ROOT, 'sqliteclirc')
 
 
     def __init__(self, sqlexecute=None, prompt=None,
             logfile=None, defaults_suffix=None, defaults_file=None,
             login_path=None, auto_vertical_output=False, warn=None,
-            myclirc="~/.myclirc"):
+            sqliteclirc="~/.sqliteclirc"):
         self.sqlexecute = sqlexecute
         self.logfile = logfile
         self.defaults_suffix = defaults_suffix
@@ -105,7 +101,7 @@ class MyCli(object):
 
         # Load config.
         config_files = ([self.default_config_file] + self.system_config_files +
-                        [myclirc])
+                        [sqliteclirc])
         c = self.config = read_config_files(config_files)
         self.multi_line = c['main'].as_bool('multi_line')
         self.key_bindings = c['main']['key_bindings']
@@ -113,7 +109,7 @@ class MyCli(object):
         self.formatter = TabularOutputFormatter(
             format_name=c['main']['table_format'])
         sql_format.register_new_formatter(self.formatter)
-        self.formatter.mycli = self
+        self.formatter.cli = self
         self.syntax_style = c['main']['syntax_style']
         self.less_chatty = c['main'].as_bool('less_chatty')
         self.cli_style = c['colors']
@@ -129,7 +125,7 @@ class MyCli(object):
 
         # Write user config if system config wasn't the last config loaded.
         if c.filename not in self.system_config_files:
-            write_default_config(self.default_config_file, myclirc)
+            write_default_config(self.default_config_file, sqliteclirc)
 
         # audit log
         if self.logfile is None and 'audit_log' in c['main']:
@@ -274,13 +270,13 @@ class MyCli(object):
 
         handler.setFormatter(formatter)
 
-        root_logger = logging.getLogger('mycli')
+        root_logger = logging.getLogger('sqlitecli')
         root_logger.addHandler(handler)
         root_logger.setLevel(level_map[log_level.upper()])
 
         logging.captureWarnings(True)
 
-        root_logger.debug('Initializing mycli logging.')
+        root_logger.debug('Initializing sqlitecli logging.')
         root_logger.debug('Log file %r.', log_file)
 
     def connect_uri(self, uri, local_infile=None, ssl=None):
@@ -491,7 +487,7 @@ class MyCli(object):
         sponsor_file = os.path.join(PACKAGE_ROOT, 'SPONSORS')
 
         history_file = os.path.expanduser(
-            os.environ.get('MYCLI_HISTFILE', '~/.mycli-history'))
+            os.environ.get('SQLiteCLI_HISTFILE', '~/.sqlitecli-history'))
         if dir_path_exists(history_file):
             history = FileHistory(history_file)
         else:
@@ -501,14 +497,10 @@ class MyCli(object):
                 'Your query history will not be saved.'.format(history_file),
                 err=True, fg='red')
 
-        key_binding_manager = mycli_bindings()
+        key_binding_manager = cli_bindings()
 
         if not self.less_chatty:
             print('Version:', __version__)
-            print('Chat: https://gitter.im/dbcli/mycli')
-            print('Mail: https://groups.google.com/forum/#!forum/mycli-users')
-            print('Home: http://mycli.net')
-            print('Thanks to the contributor -', thanks_picker([author_file, sponsor_file]))
 
         def prompt_tokens(cli):
             prompt = self.get_prompt(self.prompt_format)
@@ -673,7 +665,7 @@ class MyCli(object):
             show_suggestion_tip)
 
         layout = create_prompt_layout(
-            lexer=MyCliLexer,
+            lexer=Lexer,
             multiline=True,
             get_prompt_tokens=prompt_tokens,
             get_continuation_tokens=get_continuation_tokens,
@@ -829,7 +821,7 @@ class MyCli(object):
         """
         with self._completer_lock:
             self.completer = new_completer
-            # When mycli is first launched we call refresh_completions before
+            # When cli is first launched we call refresh_completions before
             # instantiating the cli object. So it is necessary to check if cli
             # exists before trying the replace the completer object in cli.
             if self.cli:
@@ -852,7 +844,7 @@ class MyCli(object):
         string = string.replace('\\u', sqlexecute.user or '(none)')
         string = string.replace('\\h', host or '(none)')
         string = string.replace('\\d', sqlexecute.dbname or '(none)')
-        string = string.replace('\\t', sqlexecute.server_type()[0] or 'mycli')
+        string = string.replace('\\t', sqlexecute.server_type()[0] or 'sqlitecli')
         string = string.replace('\\n', "\n")
         string = string.replace('\\D', now.strftime('%a %b %d %H:%M:%S %Y'))
         string = string.replace('\\m', now.strftime('%M'))
@@ -960,21 +952,21 @@ class MyCli(object):
                     'by default.'))
 # as of 2016-02-15 revocation list is not supported by underling PyMySQL
 # library (--ssl-crl and --ssl-crlpath options in vanilla mysql client)
-@click.option('-v', '--version', is_flag=True, help='Output mycli\'s version.')
+@click.option('-v', '--version', is_flag=True, help='Output sqlitecli\'s version.')
 @click.option('-D', '--database', 'dbname', help='Database to use.')
 @click.option('-d', '--dsn', default='', envvar='DSN',
-              help='Use DSN configured into the [alias_dsn] section of myclirc file.')
+              help='Use DSN configured into the [alias_dsn] section of sqliteclirc file.')
 @click.option('-R', '--prompt', 'prompt',
               help='Prompt format (Default: "{0}").'.format(
-                  MyCli.default_prompt))
+                  SQLiteCli.default_prompt))
 @click.option('-l', '--logfile', type=click.File(mode='a', encoding='utf-8'),
               help='Log every query and its results to a file.')
 @click.option('--defaults-group-suffix', type=str,
               help='Read MySQL config groups with the specified suffix.')
 @click.option('--defaults-file', type=click.Path(),
               help='Only read MySQL options from the given file.')
-@click.option('--myclirc', type=click.Path(), default="~/.myclirc",
-              help='Location of myclirc file.')
+@click.option('--sqliteclirc', type=click.Path(), default="~/.sqliteclirc",
+              help='Location of sqliteclirc file.')
 @click.option('--auto-vertical-output', is_flag=True,
               help='Automatically switch to vertical output mode if the result is wider than the terminal width.')
 @click.option('-t', '--table', is_flag=True,
@@ -994,14 +986,14 @@ def cli(database, user, host, port, socket, password, dbname,
         version, prompt, logfile, defaults_group_suffix, defaults_file,
         login_path, auto_vertical_output, local_infile, ssl_ca, ssl_capath,
         ssl_cert, ssl_key, ssl_cipher, ssl_verify_server_cert, table, csv,
-        warn, execute, myclirc, dsn):
+        warn, execute, sqliteclirc, dsn):
     """A MySQL terminal client with auto-completion and syntax highlighting.
 
     \b
     Examples:
-      - mycli my_database
-      - mycli -u my_user -h my_host.com my_database
-      - mycli mysql://my_user@my_host.com:3306/my_database
+      - sqlitecli my_database
+      - sqlitecli -u my_user -h my_host.com my_database
+      - sqlitecli mysql://my_user@my_host.com:3306/my_database
 
     """
 
@@ -1009,11 +1001,11 @@ def cli(database, user, host, port, socket, password, dbname,
         print('Version:', __version__)
         sys.exit(0)
 
-    mycli = MyCli(prompt=prompt, logfile=logfile,
+    sqlitecli = SQLiteCli(prompt=prompt, logfile=logfile,
                   defaults_suffix=defaults_group_suffix,
                   defaults_file=defaults_file, login_path=login_path,
                   auto_vertical_output=auto_vertical_output, warn=warn,
-                  myclirc=myclirc)
+                  sqliteclirc=sqliteclirc)
 
     # Choose which ever one has a valid value.
     database = database or dbname
@@ -1031,19 +1023,19 @@ def cli(database, user, host, port, socket, password, dbname,
     ssl = {k: v for k, v in ssl.items() if v is not None}
     if dsn is not '':
         try:
-            database = mycli.config['alias_dsn'][dsn]
+            database = sqlitecli.config['alias_dsn'][dsn]
         except:
             click.secho('Invalid DSNs found in the config file. '
-                        'Please check the "[alias_dsn]" section in myclirc.',
+                        'Please check the "[alias_dsn]" section in sqliteclirc.',
                         err=True, fg='red')
             exit(1)
     if database and '://' in database:
-        mycli.connect_uri(database, local_infile, ssl)
+        sqlitecli.connect_uri(database, local_infile, ssl)
     else:
-        mycli.connect(database, user, password, host, port, socket,
+        sqlitecli.connect(database, user, password, host, port, socket,
                       local_infile=local_infile, ssl=ssl)
 
-    mycli.logger.debug('Launch Params: \n'
+    sqlitecli.logger.debug('Launch Params: \n'
             '\tdatabase: %r'
             '\tuser: %r'
             '\thost: %r'
@@ -1053,18 +1045,18 @@ def cli(database, user, host, port, socket, password, dbname,
     if execute:
         try:
             if csv:
-                mycli.formatter.format_name = 'csv'
+                sqlitecli.formatter.format_name = 'csv'
             elif not table:
-                mycli.formatter.format_name = 'tsv'
+                sqlitecli.formatter.format_name = 'tsv'
 
-            mycli.run_query(execute)
+            sqlitecli.run_query(execute)
             exit(0)
         except Exception as e:
             click.secho(str(e), err=True, fg='red')
             exit(1)
 
     if sys.stdin.isatty():
-        mycli.run_cli()
+        sqlitecli.run_cli()
     else:
         stdin = click.get_text_stream('stdin')
         stdin_text = stdin.read()
@@ -1072,20 +1064,20 @@ def cli(database, user, host, port, socket, password, dbname,
         try:
             sys.stdin = open('/dev/tty')
         except FileNotFoundError:
-            mycli.logger.warning('Unable to open TTY as stdin.')
+            sqlitecli.logger.warning('Unable to open TTY as stdin.')
 
-        if (mycli.destructive_warning and
+        if (sqlitecli.destructive_warning and
                 confirm_destructive_query(stdin_text) is False):
             exit(0)
         try:
             new_line = True
 
             if csv:
-                mycli.formatter.format_name = 'csv'
+                sqlitecli.formatter.format_name = 'csv'
             elif not table:
-                mycli.formatter.format_name = 'tsv'
+                sqlitecli.formatter.format_name = 'tsv'
 
-            mycli.run_query(stdin_text, new_line=new_line)
+            sqlitecli.run_query(stdin_text, new_line=new_line)
             exit(0)
         except Exception as e:
             click.secho(str(e), err=True, fg='red')

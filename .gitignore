@@ -5,6 +5,7 @@
 /src
 /test/behave.ini
 venv/
+.vscode/
 
 .vagrant
 *.pyc

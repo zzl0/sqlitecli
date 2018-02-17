@@ -21,8 +21,8 @@ def style_factory(name, cli_style):
     custom_styles = {string_to_tokentype(x): y for x, y in cli_style.items()}
     style_tokens.update(custom_styles)
 
-    class MycliStyle(pygments.style.Style):
+    class CliStyle(pygments.style.Style):
         default_styles = ''
         styles = style_tokens
 
-    return MycliStyle
+    return CliStyle

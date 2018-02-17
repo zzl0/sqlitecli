@@ -3,7 +3,7 @@ from pygments.lexers.sql import MySqlLexer
 from pygments.token import Keyword
 
 
-class MyCliLexer(MySqlLexer):
+class Lexer(MySqlLexer):
     """Extends MySQL lexer to add keywords."""
 
     tokens = {

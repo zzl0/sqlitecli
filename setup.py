@@ -6,11 +6,11 @@ from setuptools import setup, find_packages
 
 _version_re = re.compile(r'__version__\s+=\s+(.*)')
 
-with open('mycli/__init__.py', 'rb') as f:
+with open('sqlitecli/__init__.py', 'rb') as f:
     version = str(ast.literal_eval(_version_re.search(
         f.read().decode('utf-8')).group(1)))
 
-description = 'CLI for MySQL Database. With auto-completion and syntax highlighting.'
+description = 'CLI for SQLite Database. With auto-completion and syntax highlighting.'
 
 install_requirements = [
     'click >= 4.1',
@@ -24,18 +24,16 @@ install_requirements = [
 ]
 
 setup(
-    name='mycli',
-    author='Mycli Core Team',
-    author_email='mycli-dev@googlegroups.com',
+    name='sqlitecli',
+    author='SQLiteCLI Core Team',
     version=version,
-    url='http://mycli.net',
     packages=find_packages(),
-    package_data={'mycli': ['myclirc', 'AUTHORS', 'SPONSORS']},
+    package_data={'sqlitecli': ['sqliteclirc', 'AUTHORS', 'SPONSORS']},
     description=description,
     long_description=description,
     install_requires=install_requirements,
     entry_points={
-        'console_scripts': ['mycli = mycli.main:cli'],
+        'console_scripts': ['sqlitecli = sqlitecli.main:cli'],
         'distutils.commands': [
             'lint = tasks:lint',
             'test = tasks:test',
