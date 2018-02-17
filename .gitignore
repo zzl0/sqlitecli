@@ -1,0 +1,15 @@
+.idea/
+/build
+/dist
+*.egg-info
+/src
+/test/behave.ini
+venv/
+
+.vagrant
+*.pyc
+*.deb
+*.swp
+.cache/
+.coverage
+.coverage.*
