@@ -1,12 +1,12 @@
 import threading
-from .packages.special.main import COMMANDS
 from collections import OrderedDict
 
+from .packages.special.main import COMMANDS
 from .sqlcompleter import SQLCompleter
 from .sqlexecute import SQLExecute
 
-class CompletionRefresher(object):
 
+class CompletionRefresher(object):
     refreshers = OrderedDict()
 
     def __init__(self):
@@ -17,7 +17,7 @@ class CompletionRefresher(object):
         """Creates a SQLCompleter object and populates it with the relevant
         completion suggestions in a background thread.
 
-        executor - SQLExecute object, used to extract the credentials to connect
+        executor - SQLExecute object, used to extract the parameters to connect
                    to the database.
         callbacks - A function or a list of functions to call after the thread
                     has completed the refresh. The newly created completion
@@ -82,9 +82,11 @@ def refresher(name, refreshers=CompletionRefresher.refreshers):
         return wrapped
     return wrapper
 
+
 @refresher('databases')
 def refresh_databases(completer, executor):
     completer.extend_database_names(executor.databases())
+
 
 @refresher('schemata')
 def refresh_schemata(completer, executor):
@@ -93,28 +95,14 @@ def refresh_schemata(completer, executor):
     completer.extend_schemata(executor.dbname)
     completer.set_dbname(executor.dbname)
 
+
 @refresher('tables')
 def refresh_tables(completer, executor):
     completer.extend_relations(executor.tables(), kind='tables')
     completer.extend_columns(executor.table_columns(), kind='tables')
 
-@refresher('users')
-def refresh_users(completer, executor):
-    completer.extend_users(executor.users())
-
-# @refresher('views')
-# def refresh_views(completer, executor):
-#     completer.extend_relations(executor.views(), kind='views')
-#     completer.extend_columns(executor.view_columns(), kind='views')
-
-@refresher('functions')
-def refresh_functions(completer, executor):
-    completer.extend_functions(executor.functions())
 
 @refresher('special_commands')
 def refresh_special(completer, executor):
     completer.extend_special_commands(COMMANDS.keys())
 
-@refresher('show_commands')
-def refresh_show_commands(completer, executor):
-    completer.extend_show_items(executor.show_candidates())

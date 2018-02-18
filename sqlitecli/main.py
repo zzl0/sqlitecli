@@ -605,14 +605,14 @@ def thanks_picker(files=()):
               default="~/.sqliteclirc",
               help='Location of sqliteclirc file.')
 @click.argument('filename',
-                nargs=1)
+                required=False)
 def cli(version, prompt, sqliteclirc, filename):
     '''A SQLite terminal client with auto-competion and syntax highlighting.
 
+    \b
     Examples:
         - sqlitecli
         - sqlitecli filename
-        - sqlitecli filename 'select * from xxx'
     '''
     if version:
         print('Version: ', __version__)

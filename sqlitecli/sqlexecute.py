@@ -18,31 +18,25 @@ FIELD_TYPES.update({
 
 class SQLExecute(object):
 
-    databases_query = '''SHOW DATABASES'''
-
-    tables_query = '''
-    SELECT name
-    FROM sqlite_master
-    WHERE type IN ('table','view')
-    AND name NOT LIKE 'sqlite_%'
-    ORDER BY 1
+    databases_query = '''
+        PRAGMA database_list
     '''
 
-    version_query = '''SELECT @@VERSION'''
+    tables_query = '''
+        SELECT name
+        FROM sqlite_master
+        WHERE type IN ('table','view')
+        AND name NOT LIKE 'sqlite_%'
+        ORDER BY 1
+    '''
 
-    version_comment_query = '''SELECT @@VERSION_COMMENT'''
-    version_comment_query_mysql4 = '''SHOW VARIABLES LIKE "version_comment"'''
-
-    show_candidates_query = '''SELECT name from mysql.help_topic WHERE name like "SHOW %"'''
-
-    users_query = '''SELECT CONCAT("'", user, "'@'",host,"'") FROM mysql.user'''
-
-    functions_query = '''SELECT ROUTINE_NAME FROM INFORMATION_SCHEMA.ROUTINES
-    WHERE ROUTINE_TYPE="FUNCTION" AND ROUTINE_SCHEMA = "%s"'''
-
-    table_columns_query = '''select TABLE_NAME, COLUMN_NAME from information_schema.columns
-                                    where table_schema = '%s'
-                                    order by table_name,ordinal_position'''
+    table_columns_query = '''
+        SELECT name, sql
+        FROM sqlite_master
+        WHERE type IN ('table','view')
+        AND name NOT LIKE 'sqlite_%'
+        ORDER BY 1
+    '''
 
     def __init__(self, filename):
         if filename:
@@ -114,23 +108,15 @@ class SQLExecute(object):
             yield row
 
     def table_columns(self):
-        """Yields column names"""
-        for c in ['aaa', 'bbb']:
-            yield ('tbl1', c)
+        """Yields (table column) pairs"""
+        for table, sql in self.conn.execute(self.table_columns_query):
+            for col in self._get_cols(sql):
+                yield (table, col)
+
+    def _get_cols(self, sql):
+        index = sql.index('(')
+        return [col.split()[0] for col in sql[index + 1: len(sql) - 1].split(', ')]
 
     def databases(self):
-        for n in ['main']:
-            yield n
-
-    def functions(self):
-        """Yields tuples of (schema_name, function_name)"""
-        return []
-
-    def show_candidates(self):
-        return []
-
-    def users(self):
-        return []
-
-    def server_type(self):
-        return 'sqlite'
+        for row in self.conn.execute(self.databases_query):
+            yield row[1]
